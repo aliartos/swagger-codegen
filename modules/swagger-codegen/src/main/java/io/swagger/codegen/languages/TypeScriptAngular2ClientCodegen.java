@@ -101,11 +101,11 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
         // determine NG version
         SemVer ngVersion;
         if (additionalProperties.containsKey(NG_VERSION)) {
-        	ngVersion = new SemVer(additionalProperties.get(NG_VERSION).toString());
+            ngVersion = new SemVer(additionalProperties.get(NG_VERSION).toString());
         } else {
-        	ngVersion = new SemVer("4.3.0");
-        	LOGGER.info("generating code for Angular {} ...", ngVersion);
-        	LOGGER.info("  (you can select the angular version by setting the additionalProperty ngVersion)");
+            ngVersion = new SemVer("4.3.0");
+            LOGGER.info("generating code for Angular {} ...", ngVersion);
+            LOGGER.info("  (you can select the angular version by setting the additionalProperty ngVersion)");
         }
         additionalProperties.put(NG_VERSION, ngVersion);
         additionalProperties.put("injectionToken", ngVersion.atLeast("4.0.0") ? "InjectionToken" : "OpaqueToken");
@@ -212,38 +212,38 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
 
         List<CodegenOperation> ops = (List<CodegenOperation>) objs.get("operation");
         for (CodegenOperation op : ops) {
-        	if ((boolean) additionalProperties.get("useHttpClient")) {
-        		op.httpMethod = op.httpMethod.toLowerCase(Locale.ENGLISH);
-        	} else {
-	            // Convert httpMethod to Angular's RequestMethod enum
-	            // https://angular.io/docs/ts/latest/api/http/index/RequestMethod-enum.html
-	            switch (op.httpMethod) {
-	                case "GET":
-	                    op.httpMethod = "RequestMethod.Get";
-	                    break;
-	                case "POST":
-	                    op.httpMethod = "RequestMethod.Post";
-	                    break;
-	                case "PUT":
-	                    op.httpMethod = "RequestMethod.Put";
-	                    break;
-	                case "DELETE":
-	                    op.httpMethod = "RequestMethod.Delete";
-	                    break;
-	                case "OPTIONS":
-	                    op.httpMethod = "RequestMethod.Options";
-	                    break;
-	                case "HEAD":
-	                    op.httpMethod = "RequestMethod.Head";
-	                    break;
-	                case "PATCH":
-	                    op.httpMethod = "RequestMethod.Patch";
-	                    break;
-	                default:
-	                    throw new RuntimeException("Unknown HTTP Method " + op.httpMethod + " not allowed");
-	            }
-        	}
-        	
+            if ((boolean) additionalProperties.get("useHttpClient")) {
+                op.httpMethod = op.httpMethod.toLowerCase(Locale.ENGLISH);
+            } else {
+                // Convert httpMethod to Angular's RequestMethod enum
+                // https://angular.io/docs/ts/latest/api/http/index/RequestMethod-enum.html
+                switch (op.httpMethod) {
+                    case "GET":
+                        op.httpMethod = "RequestMethod.Get";
+                        break;
+                    case "POST":
+                        op.httpMethod = "RequestMethod.Post";
+                        break;
+                    case "PUT":
+                        op.httpMethod = "RequestMethod.Put";
+                        break;
+                    case "DELETE":
+                        op.httpMethod = "RequestMethod.Delete";
+                        break;
+                    case "OPTIONS":
+                        op.httpMethod = "RequestMethod.Options";
+                        break;
+                    case "HEAD":
+                        op.httpMethod = "RequestMethod.Head";
+                        break;
+                    case "PATCH":
+                        op.httpMethod = "RequestMethod.Patch";
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown HTTP Method " + op.httpMethod + " not allowed");
+                }
+            }
+            
             // Convert path to TypeScript template string
             op.path = op.path.replaceAll("\\{(.*?)\\}", "\\$\\{$1\\}");
         }
