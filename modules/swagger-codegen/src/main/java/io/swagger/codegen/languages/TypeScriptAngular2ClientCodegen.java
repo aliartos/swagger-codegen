@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,6 +15,7 @@ import io.swagger.codegen.CodegenModel;
 import io.swagger.codegen.CodegenParameter;
 import io.swagger.codegen.CodegenOperation;
 import io.swagger.codegen.SupportingFile;
+import io.swagger.codegen.utils.SemVer;
 import io.swagger.models.ModelImpl;
 import io.swagger.models.properties.ArrayProperty;
 import io.swagger.models.properties.BooleanProperty;
@@ -35,7 +37,6 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
     protected String npmName = null;
     protected String npmVersion = "1.0.0";
     protected String npmRepository = null;
-    protected String ngVersion = "4";
 
     public TypeScriptAngular2ClientCodegen() {
         super();
@@ -49,13 +50,12 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
         apiPackage = "api";
         modelPackage = "model";
 
-
         this.cliOptions.add(new CliOption(NPM_NAME, "The name under which you want to publish generated npm package"));
         this.cliOptions.add(new CliOption(NPM_VERSION, "The version of your npm package"));
         this.cliOptions.add(new CliOption(NPM_REPOSITORY, "Use this property to set an url your private npmRepo in the package.json"));
         this.cliOptions.add(new CliOption(SNAPSHOT, "When setting this property to true the version will be suffixed with -SNAPSHOT.yyyyMMddHHmm", BooleanProperty.TYPE).defaultValue(Boolean.FALSE.toString()));
         this.cliOptions.add(new CliOption(WITH_INTERFACES, "Setting this property to true will generate interfaces next to the default class implementations.", BooleanProperty.TYPE).defaultValue(Boolean.FALSE.toString()));
-        this.cliOptions.add(new CliOption(NG_VERSION, "The version of Angular (2 or 4). Default is '4'"));
+        this.cliOptions.add(new CliOption(NG_VERSION, "The version of Angular. Default is '4.3'"));
     }
 
     @Override
@@ -99,21 +99,17 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
         }
 
         // determine NG version
+        SemVer ngVersion;
         if (additionalProperties.containsKey(NG_VERSION)) {
-            if ("2".equals(additionalProperties.get(NG_VERSION).toString())) {
-                additionalProperties.put("isNg2x", true);
-                setNgVersion("2");
-            } else if ("4".equals(additionalProperties.get(NG_VERSION).toString())) {
-                additionalProperties.put("isNg4x", true);
-                setNgVersion("4");
-            } else {
-                throw new IllegalArgumentException("Invalid ngVersion, which must be either '2' or '4'");
-            }
+            ngVersion = new SemVer(additionalProperties.get(NG_VERSION).toString());
         } else {
-            // default to 4
-            additionalProperties.put("isNg4x", true);
-            setNgVersion("4");
+            ngVersion = new SemVer("4.3.0");
+            LOGGER.info("generating code for Angular {} ...", ngVersion);
+            LOGGER.info("  (you can select the angular version by setting the additionalProperty ngVersion)");
         }
+        additionalProperties.put(NG_VERSION, ngVersion);
+        additionalProperties.put("injectionToken", ngVersion.atLeast("4.0.0") ? "InjectionToken" : "OpaqueToken");
+        additionalProperties.put("useHttpClient", ngVersion.atLeast("4.3.0"));
     }
 
     private void addNpmPackageGeneration() {
@@ -216,34 +212,38 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
 
         List<CodegenOperation> ops = (List<CodegenOperation>) objs.get("operation");
         for (CodegenOperation op : ops) {
-            // Convert httpMethod to Angular's RequestMethod enum
-            // https://angular.io/docs/ts/latest/api/http/index/RequestMethod-enum.html
-            switch (op.httpMethod) {
-                case "GET":
-                    op.httpMethod = "RequestMethod.Get";
-                    break;
-                case "POST":
-                    op.httpMethod = "RequestMethod.Post";
-                    break;
-                case "PUT":
-                    op.httpMethod = "RequestMethod.Put";
-                    break;
-                case "DELETE":
-                    op.httpMethod = "RequestMethod.Delete";
-                    break;
-                case "OPTIONS":
-                    op.httpMethod = "RequestMethod.Options";
-                    break;
-                case "HEAD":
-                    op.httpMethod = "RequestMethod.Head";
-                    break;
-                case "PATCH":
-                    op.httpMethod = "RequestMethod.Patch";
-                    break;
-                default:
-                    throw new RuntimeException("Unknown HTTP Method " + op.httpMethod + " not allowed");
+            if ((boolean) additionalProperties.get("useHttpClient")) {
+                op.httpMethod = op.httpMethod.toLowerCase(Locale.ENGLISH);
+            } else {
+                // Convert httpMethod to Angular's RequestMethod enum
+                // https://angular.io/docs/ts/latest/api/http/index/RequestMethod-enum.html
+                switch (op.httpMethod) {
+                    case "GET":
+                        op.httpMethod = "RequestMethod.Get";
+                        break;
+                    case "POST":
+                        op.httpMethod = "RequestMethod.Post";
+                        break;
+                    case "PUT":
+                        op.httpMethod = "RequestMethod.Put";
+                        break;
+                    case "DELETE":
+                        op.httpMethod = "RequestMethod.Delete";
+                        break;
+                    case "OPTIONS":
+                        op.httpMethod = "RequestMethod.Options";
+                        break;
+                    case "HEAD":
+                        op.httpMethod = "RequestMethod.Head";
+                        break;
+                    case "PATCH":
+                        op.httpMethod = "RequestMethod.Patch";
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown HTTP Method " + op.httpMethod + " not allowed");
+                }
             }
-
+            
             // Convert path to TypeScript template string
             op.path = op.path.replaceAll("\\{(.*?)\\}", "\\$\\{$1\\}");
         }
@@ -313,14 +313,6 @@ public class TypeScriptAngular2ClientCodegen extends AbstractTypeScriptClientCod
     @Override
     public String toModelImport(String name) {
         return modelPackage() + "/" + toModelFilename(name);
-    }
-
-    public String getNgVersion() {
-        return ngVersion;
-    }
-
-    public void setNgVersion(String ngVersion) {
-        this.ngVersion = ngVersion;
     }
 
     public String getNpmName() {
